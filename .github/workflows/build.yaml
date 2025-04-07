@@ -1,0 +1,44 @@
+name: Build and Publish Electron Build Image
+
+on:
+  push:
+    tags:
+      - "v*" # e.g. v1.2.3
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Lint Dockerfile with Hadolint
+        run: |
+          podman run --rm -i ghcr.io/hadolint/hadolint < Dockerfile
+
+      - name: Set up Podman
+        uses: redhat-actions/podman-installer@v1
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Get version from tag
+        id: get_tag
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: Build image with Podman
+        run: |
+          podman build -t ghcr.io/${{ github.repository_owner }}/tekton-electron-builder:${{ steps.get_tag.outputs.tag }} .
+          podman tag ghcr.io/${{ github.repository_owner }}/tekton-electron-builder:${{ steps.get_tag.outputs.tag }} ghcr.io/${{ github.repository_owner }}/tekton-electron-builder:latest
+
+      - name: Push to GHCR
+        run: |
+          podman push ghcr.io/${{ github.repository_owner }}/tekton-electron-builder:${{ steps.get_tag.outputs.tag }}
+          podman push ghcr.io/${{ github.repository_owner }}/tekton-electron-builder:latest
