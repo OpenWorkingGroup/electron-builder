@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/OpenWorkingGroup/electron-builder/compare/v1.0.0...v1.1.0) (2025-04-07)
+
+
+### Features
+
+* update Node.js version from 18 to 20 in Containerfile ([69447c0](https://github.com/OpenWorkingGroup/electron-builder/commit/69447c00f92f80be34915362d68f328a32599370))
+
 # 1.0.0 (2025-04-07)
 
 
