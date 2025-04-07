@@ -20,10 +20,6 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Lint Containerfile with Hadolint
-        run: |
-          podman run --rm -i ghcr.io/hadolint/hadolint < Containerfile
-
       - name: Install Podman
         run: |
           sudo apt-get update
