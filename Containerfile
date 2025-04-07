@@ -2,7 +2,7 @@
 # ----------------------------------------
 # Stage 1: Build environment with all tools
 # ----------------------------------------
-    FROM node:18 as builder
+    FROM node:20 as builder
 
     # Setup environment for pnpm global binaries
     ENV PNPM_HOME=/root/.local/share/pnpm
@@ -20,7 +20,7 @@
     # ----------------------------------------
     # Stage 2: Runtime build container
     # ----------------------------------------
-    FROM node:18-slim
+    FROM node:20-slim
     
     # Setup environment again for PNPM
     ENV PNPM_HOME=/root/.local/share/pnpm
