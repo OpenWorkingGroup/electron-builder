@@ -1,21 +1,37 @@
-name: Create GitHub Release from main
+name: Release and Build Electron Image
 
 on:
   push:
     branches:
       - "release/*"
+      - "main"
+    tags:
+      - "v*"
+  workflow_dispatch:
 
 jobs:
-  release:
+  release-and-build:
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
       packages: write
 
     steps:
-      - name: Checkout code
+      - name: Checkout source
         uses: actions/checkout@v4
+
+      - name: Lint Containerfile with Hadolint
+        run: |
+          podman run --rm -i ghcr.io/hadolint/hadolint < Containerfile
+
+      - name: Install Podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Install Node.js
         uses: actions/setup-node@v4
@@ -29,4 +45,26 @@ jobs:
       - name: Run semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
+        run: |
+          if [[ "${GITHUB_REF##*/}" == "main" ]]; then
+            npx semantic-release --tag nightly
+          else
+            npx semantic-release
+          fi
+
+      - name: Get version from tag
+        id: get_tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: Build image with Podman
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          podman build -t ghcr.io/${{ github.repository_owner }}/tekton-electron-builder:${{ steps.get_tag.outputs.tag }} .
+          podman tag ghcr.io/${{ github.repository_owner }}/tekton-electron-builder:${{ steps.get_tag.outputs.tag }} ghcr.io/${{ github.repository_owner }}/tekton-electron-builder:latest
+
+      - name: Push to GHCR
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          podman push ghcr.io/${{ github.repository_owner }}/tekton-electron-builder:${{ steps.get_tag.outputs.tag }}
+          podman push ghcr.io/${{ github.repository_owner }}/tekton-electron-builder:latest
